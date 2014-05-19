@@ -2,19 +2,64 @@
 
 
 ## Loading and preprocessing the data
-
-
+```{r preprocess,results="hide"}
+library(ggplot2)
+df <- read.csv("activity.csv", sep = ",", na.strings = "NA", stringsAsFactors = FALSE, header = TRUE)
+df$date <- as.Date(df$date, "%Y-%m-%d")
+```
 
 ## What is mean total number of steps taken per day?
-
-
+```{r stepsperday,results="hide"}
+spd <- tapply(df$steps, df$date, sum)
+qplot(spd) + geom_vline(xintercept=mean(spd, na.rm=TRUE), color="red") + geom_vline(xintercept=median(spd, na.rm=TRUE), color="green" , lty=2) + xlab("Steps per Day")
+```
+```{r mean}
+mean(spd, na.rm=TRUE)
+```
+```{r median}
+median(spd, na.rm=TRUE)
+```
 
 ## What is the average daily activity pattern?
-
-
+```{r activity,results="hide"}
+omit <- na.omit(df)
+intervals <- tapply(omit$steps, omit$interval, mean)
+df2 <- data.frame(step=intervals, interval=as.numeric(rownames(intervals)))
+max <- df2[df2$step == max(df2$step),2]
+qplot(interval, step, data=df2, group=1, geom='line') + geom_vline(xintercept=df2[df2$step == max(df2$step),2], color="green", lty=2)
+```
 
 ## Imputing missing values
-
-
+```{r missing,results="hide"}
+sum(!complete.cases(df))
+filled = data.frame(df)
+filled$steps[is.na(filled$steps)] <- mean(filled$steps, na.rm=TRUE)
+spd <- tapply(filled$steps, filled$date, sum)
+qplot(spd) + geom_vline(xintercept=mean(spd, na.rm=TRUE), color="red") + geom_vline(xintercept=median(spd, na.rm=TRUE), color="green", lty=2) + xlab("Steps per Day")
+```
+```{r meanfilled}
+mean(spd, na.rm=TRUE)
+```
+```{r medianfilled}
+median(spd, na.rm=TRUE)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+```{r weekends,results="hide"}
+weekends <- function(d){
+  if (weekdays(d) %in% c("Saturday", "Sunday", "domingo", "sabado")) {
+	"weekend"
+  } else {
+	"weekday"
+ }
+}
+filled$weekday <- sapply(filled$date, weekends)
+wkd <- filled[filled$weekday == "weekday",]
+intervals_wkd <- tapply(wkd$steps, wkd$interval, mean)
+df3 <- data.frame(step=intervals_wkd, interval=as.numeric(rownames(intervals_wkd)), wkd="Weekday")
+wknd <- filled[filled$weekday == "weekend",]
+intervals_wknd <- tapply(wknd$steps, wknd$interval, mean)
+df4 <- data.frame(step=intervals_wknd, interval=as.numeric(rownames(intervals_wknd)), wkd="Weekend")
+wk <- rbind(df3,df4)
+qplot(interval, step, data=wk, group=1, geom='line', facets=wkd~.)
+```
